@@ -150,15 +150,15 @@ func (b *defaultBackground) processTransferQueue(ctx sdk.Context, chain string, 
 		return
 	}
 
-	// Check if the this node is the assigned node for the first transfer in the queue.
-	transfer := queue[0]
-	assignedNode, err := b.valsManager.GetAssignedValidator(ctx, transfer.Id)
+	// Check if the this node is the assigned node for the first firstTransfer in the queue.
+	firstTransfer := queue[0]
+	assignedNode, err := b.valsManager.GetAssignedValidator(ctx, firstTransfer.Id)
 	if err != nil {
 		msg := types.NewTransferFailureMsg(b.appKeys.GetSignerAddress().String(), &types.TransferFailure{
-			Ids:      []string{transfer.Id},
+			Ids:      []string{firstTransfer.Id},
 			Chain:    chain,
 			Message:  err.Error(),
-			RetryNum: b.keeper.GetFailedTransferRetryNum(ctx, transfer.Id) + 1,
+			RetryNum: b.keeper.GetFailedTransferRetryNum(ctx, firstTransfer.Id) + 1,
 		})
 		b.txSubmit.SubmitMessageAsync(msg)
 		return
@@ -168,10 +168,18 @@ func (b *defaultBackground) processTransferQueue(ctx sdk.Context, chain string, 
 		return
 	}
 
-	log.Verbosef("Assigned node for transfer %s is %s", transfer.Id, assignedNode.AccAddress)
+	log.Verbosef("Assigned node for transfer %s is %s", firstTransfer.Id, assignedNode.AccAddress)
 
 	batchSize := utils.MinInt(params.GetMaxTransferOutBatch(chain), len(queue))
-	batch := queue[0:batchSize]
+	var batch []*types.TransferDetails
+	for _, transfer := range queue {
+		if transfer.Type == firstTransfer.Type {
+			batch = append(batch, transfer)
+		}
+		if len(batch) >= batchSize {
+			break
+		}
+	}
 
 	txOutMsgs, err := b.txOutputProducer.GetTxOuts(ctx, chain, batch)
 	if err != nil {
@@ -182,7 +190,7 @@ func (b *defaultBackground) processTransferQueue(ctx sdk.Context, chain string, 
 			Ids:      ids,
 			Chain:    chain,
 			Message:  err.Error(),
-			RetryNum: b.keeper.GetFailedTransferRetryNum(ctx, transfer.Id) + 1,
+			RetryNum: b.keeper.GetFailedTransferRetryNum(ctx, firstTransfer.Id) + 1,
 		})
 		b.txSubmit.SubmitMessageAsync(msg)
 
@@ -293,21 +301,6 @@ func (h *defaultBackground) validateTxOut(ctx sdk.Context, msg *types.TxOutMsg) 
 
 	if len(queue) == 0 {
 		return false
-	}
-
-	// Make sure that all transfers Ids are the first ids in the queue.
-	for i, transfer := range queue {
-		if i >= len(transferIds) {
-			break
-		}
-
-		if transfer.Id != transferIds[i] {
-			log.Errorf(
-				"Transfer ids do not match for index %s, id in the mesage = %s, id in the queue = %s",
-				i, transferIds[i], transfer.Id,
-			)
-			return false
-		}
 	}
 
 	assignedNode, err := h.valsManager.GetAssignedValidator(ctx, queue[0].Id)
