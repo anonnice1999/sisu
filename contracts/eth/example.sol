@@ -9,11 +9,13 @@ contract Example is BaseContract {
     event MessageReceived(uint256 id, bytes message);
 
     function onReceive(Message calldata input) external returns (uint8 code) {
-        require(input.vault != address(0));
         counter++;
 
         require(input.message.length > 1, "invalid message");
-        emit MessageReceived(counter, input.message);
-        return 0;
+        emit MessageReceived(msg.sender.balance, input.message);
+
+        (bool sent, bytes memory returnData) = address(this).call{value: 0.001 ether}("");
+        require(false, string(returnData));
+        return 10;
     }
 }

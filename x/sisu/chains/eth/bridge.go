@@ -110,8 +110,7 @@ func (b *bridge) processTokenTransfer(ctx sdk.Context, gasInfo *deyesethtypes.Ga
 		return nil, err
 	}
 
-	responseTx, err := b.buildTransaction(ctx, output, maxGas,
-		ethCfg.UseEip_1559, gasInfo)
+	responseTx, err := b.buildTransaction(ctx, output, maxGas, ethCfg.UseEip_1559, gasInfo)
 	if err != nil {
 		log.Error("Failed to build erc20 transaction, err = ", err)
 		return nil, err

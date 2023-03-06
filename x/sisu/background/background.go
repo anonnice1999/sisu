@@ -150,7 +150,7 @@ func (b *defaultBackground) processTransferQueue(ctx sdk.Context, chain string, 
 		return
 	}
 
-	// Check if the this node is the assigned node for the first firstTransfer in the queue.
+	// Check if the this node is the assigned node for the first transfer in the queue.
 	firstTransfer := queue[0]
 	assignedNode, err := b.valsManager.GetAssignedValidator(ctx, firstTransfer.Id)
 	if err != nil {
@@ -293,10 +293,32 @@ func (h *defaultBackground) validateTxOut(ctx sdk.Context, msg *types.TxOutMsg) 
 	}
 
 	queue := h.keeper.GetTransferQueue(ctx, msg.Data.Content.OutChain)
-	if len(queue) < len(transferIds) {
+	transfers := make([]*types.TransferDetails, 0)
+	for _, transfer := range queue {
+		if transfer.Type == queue[0].Type {
+			transfers = append(transfers, transfer)
+		}
+	}
+
+	if len(transfers) < len(transferIds) {
 		log.Errorf("Transfers list in the message (len = %d) is longer than the saved transfer queue (len = %d).",
 			len(transferIds), len(queue))
 		return false
+	}
+
+	// Make sure that all transfers Ids are the first ids in the queue.
+	for i, transfer := range transfers {
+		if i >= len(transferIds) {
+			break
+		}
+
+		if transfer.Id != transferIds[i] {
+			log.Errorf(
+				"Transfer ids do not match for index %s, id in the mesage = %s, id in the queue = %s",
+				i, transferIds[i], transfer.Id,
+			)
+			return false
+		}
 	}
 
 	if len(queue) == 0 {

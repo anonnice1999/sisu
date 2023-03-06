@@ -147,7 +147,6 @@ contract Vault {
 
     mapping(address => AppConfig) private appConfigs;
 
-    uint256 private nonce;
     uint256 private commission;
 
     modifier onlySpender() {
@@ -162,7 +161,7 @@ contract Vault {
 
     modifier chargeFee(address caller) {
         uint256 gasLimit = gasleft();
-        require(balances[native][caller] >= _calcFee(gasLimit), "remoteExecute: not enough balance");
+        require(balances[native][caller] >= _calcFee(gasLimit), "caller is not enough balance");
 
         _;
 
@@ -553,11 +552,11 @@ contract Vault {
         return balances[token][account];
     }
 
-    function getId(uint256 callerChain, address caller, uint256 appChain, address app, uint256 _nonce)
-        private pure returns (bytes32)
-    {
-        return keccak256(abi.encode(callerChain, caller, appChain, app, _nonce));
-    }
+    // function getId(uint256 callerChain, address caller, uint256 appChain, address app, uint256 _nonce)
+    //     private pure returns (bytes32)
+    // {
+    //     return keccak256(abi.encode(callerChain, caller, appChain, app, _nonce));
+    // }
 
     function remoteCall(uint256 appChain, address app, bytes calldata message, uint64 callGasLimit)
         public // returns (bytes32 id)
@@ -604,7 +603,6 @@ contract Vault {
         bytes memory exception;
         try BaseContract(app).onReceive{gas: gasLimit}(
             BaseContract.Message({
-                vault: address(this),
                 callerChain: callerChain,
                 caller: caller,
                 message: message

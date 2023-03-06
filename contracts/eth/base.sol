@@ -11,7 +11,6 @@ interface BaseContract {
      * @param message: the message is sent from sender.
      */
     struct Message {
-        address vault;
         uint256 callerChain;
         address caller;
         bytes message;
